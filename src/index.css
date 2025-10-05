@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+/* Phaser Canvas Fix */
+#game-root {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Make sure Phaser canvas is visible and clickable */
+#game-root canvas {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 10 !important;
+  pointer-events: auto !important;
+}
+
+/* Prevent any parent background from blocking clicks */
+#game-root::before,
+#game-root::after {
+  pointer-events: none !important;
+}
