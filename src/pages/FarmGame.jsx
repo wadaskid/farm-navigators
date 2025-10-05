@@ -23,6 +23,7 @@ export default function FarmGame() {
   const navigate = useNavigate();
   const [actionLog, setActionLog] = useState([]);
   const [showEndModal, setShowEndModal] = useState(false);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [endSummary, setEndSummary] = useState("");
 
   useEffect(() => {
@@ -36,7 +37,6 @@ export default function FarmGame() {
       return;
     }
 
-    // Rain pattern distinguishes "none" from "low"
     const rainPattern = data.precip.map((mm) => {
       if (mm === 0) return "none";
       if (mm < 3) return "low";
@@ -45,10 +45,7 @@ export default function FarmGame() {
     });
 
     class FarmScene extends Phaser.Scene {
-      constructor() {
-        super({ key: "FarmScene" });
-      }
-
+      constructor() { super({ key: "FarmScene" }); }
       init() {
         this.cropType = cropType;
         this.locationName = locationName;
@@ -61,7 +58,6 @@ export default function FarmGame() {
         this.cropHealth = 70;
         this.marketPrice = 1.0;
         this.soilMoisture = data.soil_moisture?.[0] || 55;
-        this.precipSeries = [data.precip[0] || 0];
         this.rainDrops = [];
         this.actionsTakenToday = [];
       }
@@ -105,6 +101,16 @@ export default function FarmGame() {
             padding: { x: 6, y: 4 },
           });
           btn.setInteractive({ useHandCursor: true }).on("pointerdown", () => this.handleAction(a));
+        });
+
+        // How to Play button
+        const helpBtn = this.add.text(WIDTH - 140, HEIGHT - 80, "❓ How to Play", {
+          font: "16px Arial",
+          backgroundColor: "#fcd34d",
+          padding: { x: 6, y: 4 },
+        });
+        helpBtn.setInteractive({ useHandCursor: true }).on("pointerdown", () => {
+          setShowHowToPlay(true);
         });
 
         // Next Day button
@@ -211,13 +217,11 @@ export default function FarmGame() {
         const rain = this.rainPattern[this.day - 1] || "medium";
         let feedback = `🌧️ Rain: ${rain === "none" ? "No rain" : rain.toUpperCase()}`;
 
-        // Update soil moisture based on rain
         if (rain === "none") this.soilMoisture -= 7;
         else if (rain === "low") this.soilMoisture -= 5;
         else if (rain === "medium") this.soilMoisture += 6;
         else this.soilMoisture += 12;
 
-        // Each action
         switch (action) {
           case "Irrigate": {
             this.soilMoisture += 10;
@@ -248,22 +252,19 @@ export default function FarmGame() {
 
         this.actionsTakenToday.push(action);
 
-        // Random pest growth for the day
+        // Pest growth
         const pestGrowth = Phaser.Math.Between(0, 5) + (100 - this.cropHealth) / 20;
         this.pests = Phaser.Math.Clamp(this.pests + pestGrowth, 0, 100);
 
-        // Clamp soil & nitrogen
         this.soilMoisture = Phaser.Math.Clamp(this.soilMoisture, 0, 100);
         this.nitrogen = Phaser.Math.Clamp(this.nitrogen, 0, 100);
 
-        // Update crop health
         this.cropHealth = Phaser.Math.Clamp(
           (this.soilMoisture * 0.4 + this.nitrogen * 0.4 + (100 - this.pests) * 0.2) / 1.5,
           0,
           100
         );
 
-        // Update money based on crop health
         if (this.cropHealth > 70) this.money += 4 * this.marketPrice;
         else if (this.cropHealth > 40) this.money += 2 * this.marketPrice;
 
@@ -301,9 +302,7 @@ export default function FarmGame() {
         }
       }
 
-      update() {
-        this.updateRain();
-      }
+      update() { this.updateRain(); }
     }
 
     const config = {
@@ -335,6 +334,7 @@ export default function FarmGame() {
         </div>
       </div>
 
+      {/* End of season modal */}
       {showEndModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-white rounded p-6 w-1/3 shadow-lg">
@@ -352,6 +352,44 @@ export default function FarmGame() {
               }}
             >
               ⬅️ Go to Map
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* How to Play modal */}
+      {showHowToPlay && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white rounded p-6 w-1/3 shadow-lg">
+            <h2 className="text-xl font-bold mb-4">❓ How to Play</h2>
+            <div className="text-sm whitespace-pre-wrap">
+              🌧️ Rain affects soil moisture:<br />
+              - None: soil dries faster<br />
+              - Low: small increase<br />
+              - Medium: moderate increase<br />
+              - High: large increase<br /><br />
+
+              🚿 Irrigate: increases soil moisture (+10), costs money, may reduce sustainability if it rains<br /><br />
+
+              🌱 Fertilize: increases nitrogen (+12), costs money, high rain may reduce sustainability<br /><br />
+
+              🔍 Scout: reduces pests (random 5-15), costs small amount of money<br /><br />
+
+              ⏳ Wait: do nothing<br /><br />
+
+              🌿 Crop health depends on soil moisture, nitrogen, and pests<br /><br />
+
+              💰 Money increases if crop health is good, market price fluctuates<br /><br />
+
+              📈 Check dashboard chart for soil moisture & precipitation<br /><br />
+
+              ✅ Take actions wisely each day to maximize profit & crop health
+            </div>
+            <button
+              className="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              onClick={() => setShowHowToPlay(false)}
+            >
+              Close
             </button>
           </div>
         </div>
