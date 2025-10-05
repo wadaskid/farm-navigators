@@ -36,7 +36,7 @@ export default function FarmGame() {
       return;
     }
 
-    // ✅ Updated rain pattern: distinguish "none" from "low"
+    // Rain pattern distinguishes "none" from "low"
     const rainPattern = data.precip.map((mm) => {
       if (mm === 0) return "none";
       if (mm < 3) return "low";
@@ -206,51 +206,64 @@ export default function FarmGame() {
       }
 
       handleAction(action) {
-        if (this.day > this.rainPattern.length) return; // Prevent actions after season ends
+        if (this.day > this.rainPattern.length) return;
 
         const rain = this.rainPattern[this.day - 1] || "medium";
         let feedback = `🌧️ Rain: ${rain === "none" ? "No rain" : rain.toUpperCase()}`;
 
+        // Update soil moisture based on rain
         if (rain === "none") this.soilMoisture -= 7;
         else if (rain === "low") this.soilMoisture -= 5;
         else if (rain === "medium") this.soilMoisture += 6;
         else this.soilMoisture += 12;
 
+        // Each action
         switch (action) {
-          case "Irrigate":
+          case "Irrigate": {
             this.soilMoisture += 10;
             this.money -= 3;
             if (rain !== "low" && rain !== "none") this.sustainability -= 2;
-            feedback += "\n🚿 You irrigated.";
+            feedback += "\n🚿 You irrigated, soil moisture increased.";
             break;
-          case "Fertilize":
+          }
+          case "Fertilize": {
             this.nitrogen += 12;
             this.money -= 2;
             if (rain === "high") this.sustainability -= 3;
-            feedback += "\n🌱 You fertilized.";
+            feedback += "\n🌱 You fertilized, nitrogen increased.";
             break;
-          case "Scout":
-            this.pests -= 10;
+          }
+          case "Scout": {
+            const pestReduction = Phaser.Math.Between(5, 15);
+            this.pests = Phaser.Math.Clamp(this.pests - pestReduction, 0, 100);
             this.money -= 1;
-            feedback += "\n🔍 You scouted pests.";
+            feedback += `\n🔍 You scouted and reduced pests by ${pestReduction}.`;
             break;
-          case "Wait":
+          }
+          case "Wait": {
             feedback += "\n⏳ You waited.";
             break;
+          }
         }
 
         this.actionsTakenToday.push(action);
 
-        this.pests = Phaser.Math.Clamp(this.pests + Phaser.Math.Between(-2, 4), 0, 100);
+        // Random pest growth for the day
+        const pestGrowth = Phaser.Math.Between(0, 5) + (100 - this.cropHealth) / 20;
+        this.pests = Phaser.Math.Clamp(this.pests + pestGrowth, 0, 100);
+
+        // Clamp soil & nitrogen
         this.soilMoisture = Phaser.Math.Clamp(this.soilMoisture, 0, 100);
         this.nitrogen = Phaser.Math.Clamp(this.nitrogen, 0, 100);
 
+        // Update crop health
         this.cropHealth = Phaser.Math.Clamp(
           (this.soilMoisture * 0.4 + this.nitrogen * 0.4 + (100 - this.pests) * 0.2) / 1.5,
           0,
           100
         );
 
+        // Update money based on crop health
         if (this.cropHealth > 70) this.money += 4 * this.marketPrice;
         else if (this.cropHealth > 40) this.money += 2 * this.marketPrice;
 
@@ -322,7 +335,6 @@ export default function FarmGame() {
         </div>
       </div>
 
-      {/* End of season modal */}
       {showEndModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-white rounded p-6 w-1/3 shadow-lg">
